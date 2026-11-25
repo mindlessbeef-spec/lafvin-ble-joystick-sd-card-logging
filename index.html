@@ -112,7 +112,10 @@
   <div class="col-right">
   <section class="card">
     <div class="label">SD card data</div>
-    <button id="downloadCsv" class="btnprimary" style="width:100%" disabled>⬇ Download CSV Logs</button>
+    <div class="row2" style="margin-top:0">
+      <button id="downloadCsv" class="btnprimary" disabled>⬇ Download CSV Logs</button>
+      <button id="deleteCsvEarly" class="btndanger solid" disabled>🗑 Delete file</button>
+    </div>
     <div id="csvProgressWrap" class="progress-wrap" aria-live="polite">
       <div class="progress-meta"><span id="csvProgressLabel">Ready to download</span><strong id="csvProgressPercent">0%</strong></div>
       <div id="csvProgressTrack" class="progress-track" role="progressbar" aria-label="CSV download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="csvProgressFill" class="progress-fill"></div></div>
@@ -525,12 +528,13 @@ function updateFileUI(){
   const simpleReady=connected()&&canReceiveData&&!busy();
   $('deleteSelected').disabled=!ready||selected.size===0||!csvText;
   $('deleteAll').disabled=!simpleReady;
+  $('deleteCsvEarly').disabled=!simpleReady;
   $('selectAll').disabled=busy();$('deselectAll').disabled=busy();
   $('openFileLabel').style.opacity=busy()?'.43':'1';
   $('openFile').disabled=busy();
   document.querySelectorAll('#tbody input[data-line]').forEach(box=>{box.disabled=busy()});
 }
-function setOpStatus(text,kind=''){$('opStatus').textContent=text;$('opStatus').className='opstatus'+(kind?' '+kind:'');}
+function setOpStatus(text,kind=''){$('opStatus').textContent=text;$('opStatus').className='opstatus'+(kind?' '+kind:'');if($('previewBody').hidden) $('downloadStatus').textContent=text;}
 function setOpProgress(fraction,label){
   $('opProgressWrap').hidden=false;
   const fill=$('opProgressFill');fill.className='progress-fill';
@@ -676,7 +680,7 @@ $('deleteSelected').addEventListener('click',async()=>{
   armOpTimer(30000,'No reply from the robot for 30 seconds. robot.csv was not confirmed as changed; download it again to check.');
   postUrgent(`RW,${pending.bytes},${crc},${count}\n`);
 });
-$('deleteAll').addEventListener('click',async()=>{
+async function handleDeleteAllClick(){
   if(busy())return;
   if(!canReceiveData){setOpStatus('BLE notifications are unavailable, so the website cannot confirm deletion.','err');return;}
   const ok=await confirmAction({
@@ -694,7 +698,9 @@ $('deleteAll').addEventListener('click',async()=>{
   setOpStatus('Robot stopped. Waiting for the robot to confirm?');
   armOpTimer(20000,'No reply from the robot. robot.csv was not confirmed as deleted; download it to check.');
   postUrgent(firmwareSupportsFiles ? 'DELALL\n' : 'X\n');
-});
+}
+$('deleteAll').addEventListener('click',handleDeleteAllClick);
+$('deleteCsvEarly').addEventListener('click',handleDeleteAllClick);
 
 /* ---------- connection and controls ---------- */
 function onDisconnected(){
